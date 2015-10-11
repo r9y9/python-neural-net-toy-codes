@@ -9,13 +9,17 @@
 
 import numpy as np
 
+
 def sigmoid(x):
     return 1.0 / (1.0 + np.exp(-x))
+
 
 def dsigmoid(y):
     return y * (1.0 - y)
 
+
 class NeuralNet:
+
     def __init__(self, num_input, num_hidden, num_output):
         """
         パラメータの初期化
@@ -45,11 +49,13 @@ class NeuralNet:
             E += np.sum((y - t) * (y - t))
         return 0.5 * E / float(N)
 
-    def train(self, data, target, epoches=30000, learning_rate=0.1,\
+    def train(self, data, target, epoches=30000, learning_rate=0.1,
+              valid_set=None,
               monitor_period=None):
         """
         Stochastic Gradient Decent (SGD) による学習
         """
+
         for epoch in range(epoches):
             # 学習データから1サンプルをランダムに選ぶ
             index = np.random.randint(0, data.shape[0])
@@ -70,16 +76,28 @@ class NeuralNet:
             # 入力層->隠れ層の重みの修正量を計算
             hidden_delta = np.dot(self.W2, output_delta) * dsigmoid(h)
             grad_W1 = np.dot(np.atleast_2d(x).T, np.atleast_2d(hidden_delta))
-            
+
             # 入力層->隠れ層の重みを更新
             self.W1 -= learning_rate * grad_W1
             self.hidden_bias -= learning_rate * hidden_delta
 
             # 現在の目的関数の値を出力
             if monitor_period != None and epoch % monitor_period == 0:
-                print "Epoch %d, Cost %f" % (epoch, self.cost(data, target))
+                acc = self.accuracy(
+                    *valid_set) if valid_set is not None else -1.0
+                print("Epoch: {0}, Cost: {1}, Accuracy on validation set: {2}").format(
+                    epoch, self.cost(data, target), acc)
 
-        print "Training finished."
+        print("Training finished")
+
+    def accuracy(self, X, Y):
+        """
+        データセット (X, Y) を入力として、正解率を計算します
+        """
+        Y_hat = np.arange(X.shape[0], dtype=np.int)
+        for n in range(len(X)):
+            Y_hat[n] = self.predict(X[n])
+        return (Y_hat == Y).mean()
 
     def predict(self, x):
         """
@@ -91,18 +109,19 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Specify options")
-    parser.add_argument("--epoches", dest="epoches", type=int, required=True)
-    parser.add_argument("--learning_rate", dest="learning_rate",\
+    parser.add_argument("--epoches", dest="epoches",
+                        type=int, required=True)
+    parser.add_argument("--learning_rate", dest="learning_rate",
                         type=float, default=0.1)
     parser.add_argument("--hidden", dest="hidden", type=int, default=20)
     args = parser.parse_args()
 
     nn = NeuralNet(2, args.hidden, 1)
 
-    data = np.array([[0, 0], [0 ,1], [1, 0], [1, 1]])
+    data = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
     target = np.array([0, 1, 1, 0])
 
-    nn.train(data, target, args.epoches, args.learning_rate,\
+    nn.train(data, target, args.epoches, args.learning_rate,
              monitor_period=1000)
 
     for x in data:

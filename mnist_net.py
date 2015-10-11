@@ -21,6 +21,7 @@ import os
 # 作成したニューラルネットのパッケージ
 import net
 
+
 def load_mnist_dataset(dataset):
     """
     MNISTのデータセットをダウンロードします
@@ -39,6 +40,7 @@ def load_mnist_dataset(dataset):
 
     return train_set, valid_set, test_set
 
+
 def augument_labels(labels, order):
     """
     1次元のラベルデータを、ラベルの種類数(order)次元に拡張します
@@ -48,22 +50,24 @@ def augument_labels(labels, order):
         v = np.zeros(order)
         v[labels[i]] = 1
         new_labels.append(v)
-    
-    return np.array(new_labels).reshape((labels.shape[0], order))        
+
+    return np.array(new_labels).reshape((labels.shape[0], order))
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="MNIST手書き数字認識のデモ")
     parser.add_argument("--epoches", dest="epoches", type=int, required=True)
-    parser.add_argument("--learning_rate", dest="learning_rate",\
+    parser.add_argument("--learning_rate", dest="learning_rate",
                         type=float, default=0.1)
     parser.add_argument("--hidden", dest="hidden", type=int, default=100)
+    parser.add_argument("--monotir_period",
+                        dest="monotir_period", type=int, default=500)
     args = parser.parse_args()
 
     train_set, valid_set, test_set = load_mnist_dataset("mnist.pkl.gz")
-    n_labels = 10 # 0,1,2,3,4,5,6,7,9
-    n_features = 28*28
+    n_labels = 10  # 0,1,2,3,4,5,6,7,9
+    n_features = 28 * 28
 
     # モデルを新しく作る
     nn = net.NeuralNet(n_features, args.hidden, n_labels)
@@ -71,17 +75,13 @@ if __name__ == "__main__":
     # モデルを読み込む
     # nn = joblib.load("./nn_mnist.pkl")
 
-    nn.train(train_set[0], augument_labels(train_set[1], n_labels),\
-             args.epoches, args.learning_rate, monitor_period=2000)
+    nn.train(train_set[0], augument_labels(train_set[1], n_labels),
+             args.epoches, args.learning_rate, monitor_period=args.monotir_period,
+             valid_set=valid_set)
 
-    ## テスト
-    test_data, labels = test_set
-    results = np.arange(len(test_data), dtype=np.int)
-    for n in range(len(test_data)):
-        results[n] = nn.predict(test_data[n])
-        # print "%d : predicted %s, expected %s" % (n, results[n], labels[n])
-    print "recognition rate: ", (results == labels).mean()
-    
+    # テスト
+    print "Recognition rate on test set: {}".format(nn.accuracy(*test_set))
+
     # モデルを保存
     model_filename = "nn_mnist.pkl"
     joblib.dump(nn, model_filename, compress=9)
